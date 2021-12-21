@@ -150,8 +150,6 @@ function storage(id) {
     var updated = dayjs.dayjs(items[i].getChildText('updated', atom))
     var published = dayjs.dayjs(items[i].getChildText('published', atom))
     var videoId = items[i].getChildText('videoId', ns_yt)
-    // var channelId = id
-    // var channel = items[i].getChild('author', atom).getChildText('name', atom)
 
     var tmp = findId(sheet, videoId, lastRow, updated.format('YYYY/MM/DDTHH:mm:ss'))
     var tf = tmp[0]
@@ -256,21 +254,19 @@ function store(){
 // update trigger
 function query(){
   const query = set_sheet('query').clear()
-    query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'upcoming\'", 1)')
 
-    var upcoming = query.getDataRange().getValues()
-    upcoming.shift()
-    // upcoming.forEach((video)=>{updateChecker(video)})
+  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'upcoming\'", 1)')
+  var upcoming = query.getDataRange().getValues()
+  upcoming.shift()
 
-    query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'live\'", 1)')
+  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'live\'", 1)')
+  var live = query.getDataRange().getValues()
+  live.shift()
 
-    var live = query.getDataRange().getValues()
-    live.shift()
-    // live.forEach((video)=>{updateChecker(video)})
 
-    var check_videos = upcoming.concat(live)
+  var check_videos = upcoming.concat(live)
 
-    updateChecker(check_videos)
+  updateChecker(check_videos)
 
 }
 
