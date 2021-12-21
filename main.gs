@@ -264,24 +264,38 @@ function update(title, lbc, sst, videoId, channel){
 
 // video info update check
 function updateChecker(data){
+// var return_info = false 
+  
   var videoIds = data.map((v)=>{
     return v[3]
   }).join(',')
-  
-  var video_info = YT.Videos.list('snippet, liveStreamingDetails', {id:videoIds, fields:'items(snippet(liveBroadcastContent, title), liveStreamingDetails(scheduledStartTime, actualStartTime))'}).items
 
-  video_info.forEach((v, index)=>{
-    const videoId = data[index][3]
-    const current_title = data[index][0]
-    const current_lbc = data[index][5]
-    const current_sst = dayjs.dayjs(data[index][6])
-    // const channelId = Object.keys(channels)[Object.values(channels).findIndex((c)=> c == data[index][4])]
-    const channel = data[index][4]
+  var video_info = YT.Videos.list('id, snippet, liveStreamingDetails', {id:videoIds, fields:'items(id, snippet(liveBroadcastContent, title), liveStreamingDetails(scheduledStartTime, actualStartTime))'}).items
+
+  video_info.forEach((v)=>{
+    const videoId = v.id
+
+    const data_index = data.map((v)=>{
+      return v[3]
+    }).indexOf(videoId)
+
+    const current_title = data[data_index][0]
+    const current_lbc = data[data_index][5]
+    const current_sst = dayjs.dayjs(data[data_index][6])
+    const channel = data[data_index][4]
 
     const title = v.snippet.title
     const lbc = v.snippet.liveBroadcastContent
     const sst = dayjs.dayjs(v.liveStreamingDetails.scheduledStartTime)
     const ast = Object.keys(v.liveStreamingDetails).indexOf('actualStartTime') >= 0 ? dayjs.dayjs(v.liveStreamingDetails.actualStartTime) : false
+
+    console.log(current_title,title)
+    console.log(current_title!=title)
+    console.log(current_lbc, lbc)
+    console.log(current_lbc!=lbc)
+    console.log(current_sst.format(), sst.format())
+    console.log(current_sst.format() !=sst.format())
+
 
     if(current_title != title || current_lbc != lbc || current_sst.format() != sst.format()){
       console.log('update: ' +title)
@@ -294,45 +308,10 @@ function updateChecker(data){
       post2discord({channel:channel, title:title, videoId:videoId, time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':txt})
       Utilities.sleep(400)
 
-
     }
 
   })
 
-
-}
-
-// update trigger
-function query(){
-  const query = set_sheet('query').clear()
-
-  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'upcoming\'", 1)')
-  var upcoming = query.getDataRange().getValues()
-  upcoming.shift()
-
-  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'live\'", 1)')
-  var live = query.getDataRange().getValues()
-  live.shift()
-
-  var check_videos = upcoming.concat(live)
-
-  updateChecker(check_videos)
-}
-
-// Notification POST
-function post(video, situation){
-  var sst = dayjs.dayjs(video[6])
-
-  if(situation == 'upcoming' && ((sst.diff(now, 'hour') <= 3 && minute%15 == 0) || (sst.diff(now, 'hour')%6 == 0 && minute == 0 && sst.diff(now, 'day') < 7))){
-    post2discord({channel:video[4], title:video[0], videoId:video[3], time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':description_text(situation, sst.format('MM/DD HH:mm'))})
-    console.log(video[0])
-    Utilities.sleep(400)
-  } else if(situation == 'live' && minute%10 == 0){
-    post2discord({channel:video[4], title:video[0], videoId:video[3], time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':description_text(situation, sst.format('HH:mm'))})
-    console.log(video[0])
-    Utilities.sleep(400)
-  }
-  
 }
 
 // Notification trigger
