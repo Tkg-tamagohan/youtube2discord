@@ -94,7 +94,7 @@ function post2discord(data){
 function mergeSheet(){
   console.log('mergeSheet')
   const main_sheet = set_sheet('main')
-  const query_sheet = Object.values(channels).slice(0, 48).map((val)=>{
+  const query_sheet = Object.values(channels).map((val)=>{
     return 'QUERY(\''+escape_html(val)+'\'!A:G, "select * offset 1", 0)'
   }).join(';')
 
