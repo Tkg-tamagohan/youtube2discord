@@ -289,14 +289,6 @@ function updateChecker(data){
     const sst = dayjs.dayjs(v.liveStreamingDetails.scheduledStartTime)
     const ast = Object.keys(v.liveStreamingDetails).indexOf('actualStartTime') >= 0 ? dayjs.dayjs(v.liveStreamingDetails.actualStartTime) : false
 
-    console.log(current_title,title)
-    console.log(current_title!=title)
-    console.log(current_lbc, lbc)
-    console.log(current_lbc!=lbc)
-    console.log(current_sst.format(), sst.format())
-    console.log(current_sst.format() !=sst.format())
-
-
     if(current_title != title || current_lbc != lbc || current_sst.format() != sst.format()){
       console.log('update: ' +title)
       console.log(current_lbc+' => '+lbc)
