@@ -45,6 +45,82 @@ function description_text(lbc, time = now.format('YYYY/MM/DD HH:mm:ss')){
   }
 }
 
+// post to discord
+function post2discord(data){
+  const type = 'application/json'
+  const discord = 'YOUR_DISCORD_CHANNEL_WEBHOOK'
+  const youtube_url = 'https://www.youtube.com/watch?v='
+
+  var message = {
+    username: data.channel,
+    content: "",
+    tts: false,
+    embeds: [
+      {
+        type: "rich",
+        title: data.title,
+        description: data.description_text,
+        color: 0xFF0000,
+        image: {
+          url: "https://img.youtube.com/vi/"+data.videoId+"/maxresdefault.jpg",
+        },
+        url: youtube_url+data.videoId,
+        footer:{
+          text: data.time
+        },
+      },
+
+    ],
+  }
+
+  var options = {
+    'method' : 'post',
+    'contentType': type,
+    'payload': JSON.stringify(message),
+  }
+
+  // console.log(JSON.stringify(data))
+
+  try{
+    UrlFetchApp.fetch(discord, options)
+  }catch(e){
+    console.log(e)
+  }
+
+  
+}
+
+// ALL data sheet
+function mergeSheet(){
+  console.log('mergeSheet')
+  const main_sheet = set_sheet('main')
+  const query_sheet = Object.values(channels).slice(0, 48).map((val)=>{
+    return 'QUERY(\''+escape_html(val)+'\'!A:G, "select * offset 1", 0)'
+  }).join(';')
+
+  main_sheet.getRange(2,1).setValue('=QUERY({'+query_sheet+'}, "where Col1 is not null order by Col3 desc", 0)')
+
+}
+
+
+
+// sheet name escape
+function escape_html(string) {
+  if(typeof string !== 'string') {
+    return string;
+  }
+  return string.replace(/[&'`"<>]/g, function(match) {
+    return {
+      '&': '&amp;',
+      "'": '&#x27;',
+      '`': '&#x60;',
+      '"': '&quot;',
+      '<': '&lt;',
+      '>': '&gt;',
+    }[match]
+  });
+}
+
 // Auto sheet insert
 function set_sheet(name){
   var sheet = spreadsheet.getSheetByName(escape_html(name))
@@ -64,23 +140,6 @@ function sheet_move(){
     set_sheet(c).activate()
     spreadsheet.moveActiveSheet(index+2)
   })
-}
-
-// sheet name escape
-function escape_html(string) {
-  if(typeof string !== 'string') {
-    return string;
-  }
-  return string.replace(/[&'`"<>]/g, function(match) {
-    return {
-      '&': '&amp;',
-      "'": '&#x27;',
-      '`': '&#x60;',
-      '"': '&quot;',
-      '<': '&lt;',
-      '>': '&gt;',
-    }[match]
-  });
 }
 
 // find same videoId column
@@ -178,64 +237,6 @@ function storage(id) {
 
 }
 
-// post to discord
-function post2discord(data){
-  const type = 'application/json'
-  const discord = 'YOUR_DISCORD_CHANNEL_WEBHOOK'
-  const youtube_url = 'https://www.youtube.com/watch?v='
-
-  var message = {
-    username: data.channel,
-    content: "",
-    tts: false,
-    embeds: [
-      {
-        type: "rich",
-        title: data.title,
-        description: data.description_text,
-        color: 0xFF0000,
-        image: {
-          url: "https://img.youtube.com/vi/"+data.videoId+"/maxresdefault.jpg",
-        },
-        url: youtube_url+data.videoId,
-        footer:{
-          text: data.time
-        },
-      },
-
-    ],
-  }
-
-  var options = {
-    'method' : 'post',
-    'contentType': type,
-    'payload': JSON.stringify(message),
-  }
-
-  // console.log(JSON.stringify(data))
-
-  try{
-    UrlFetchApp.fetch(discord, options)
-  }catch(e){
-    console.log(e)
-  }
-
-  
-}
-
-// ALL data sheet
-function mergeSheet(){
-  console.log('mergeSheet')
-  const main_sheet = set_sheet('main')
-  const query_sheet = Object.values(channels).slice(0, 48).map((val)=>{
-    return 'QUERY(\''+escape_html(val)+'\'!A:G, "select * offset 1", 0)'
-  }).join(';')
-
-  main_sheet.getRange(2,1).setValue('=QUERY({'+query_sheet+'}, "where Col1 is not null order by Col3 desc", 0)')
-
-}
-
-
 // store trigger
 function store(){
 
@@ -251,23 +252,14 @@ function store(){
   
 }
 
-// update trigger
-function query(){
-  const query = set_sheet('query').clear()
-
-  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'upcoming\'", 1)')
-  var upcoming = query.getDataRange().getValues()
-  upcoming.shift()
-
-  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'live\'", 1)')
-  var live = query.getDataRange().getValues()
-  live.shift()
-
-
-  var check_videos = upcoming.concat(live)
-
-  updateChecker(check_videos)
-
+// update
+function update(title, lbc, sst, videoId, channel){
+  const sheet = set_sheet(channel)
+  const lr = sheet.getLastRow()
+  const tmp = sheet.getRange(1, 4, lr).getValues().findIndex((id) => id == videoId)+1
+  sheet.getRange(tmp, 1).setValue(title)
+  sheet.getRange(tmp, 6).setValue(lbc)
+  sheet.getRange(tmp, 7).setValue(sst.format('YYYY/MM/DD HH:mm:ss'))
 }
 
 // video info update check
@@ -310,16 +302,37 @@ function updateChecker(data){
 
 }
 
-// update
-function update(title, lbc, sst, videoId, channel){
-  const sheet = set_sheet(channel)
-  const lr = sheet.getLastRow()
-  const tmp = sheet.getRange(1, 4, lr).getValues().findIndex((id) => id == videoId)+1
-  sheet.getRange(tmp, 1).setValue(title)
-  sheet.getRange(tmp, 6).setValue(lbc)
-  sheet.getRange(tmp, 7).setValue(sst.format('YYYY/MM/DD HH:mm:ss'))
+// update trigger
+function query(){
+  const query = set_sheet('query').clear()
 
+  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'upcoming\'", 1)')
+  var upcoming = query.getDataRange().getValues()
+  upcoming.shift()
 
+  query.getRange(1,1).setValue('=QUERY(main!A:G, "where F = \'live\'", 1)')
+  var live = query.getDataRange().getValues()
+  live.shift()
+
+  var check_videos = upcoming.concat(live)
+
+  updateChecker(check_videos)
+}
+
+// Notification POST
+function post(video, situation){
+  var sst = dayjs.dayjs(video[6])
+
+  if(situation == 'upcoming' && ((sst.diff(now, 'hour') <= 3 && minute%15 == 0) || (sst.diff(now, 'hour')%6 == 0 && minute == 0 && sst.diff(now, 'day') < 7))){
+    post2discord({channel:video[4], title:video[0], videoId:video[3], time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':description_text(situation, sst.format('MM/DD HH:mm'))})
+    console.log(video[0])
+    Utilities.sleep(400)
+  } else if(situation == 'live' && minute%10 == 0){
+    post2discord({channel:video[4], title:video[0], videoId:video[3], time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':description_text(situation, sst.format('HH:mm'))})
+    console.log(video[0])
+    Utilities.sleep(400)
+  }
+  
 }
 
 // Notification trigger
@@ -336,22 +349,4 @@ function notification(){
   live.shift()
   live.forEach((video)=>{post(video, 'live')})
 
-}
-
-// Notification POST
-function post(video, situation){
-  var sst = dayjs.dayjs(video[6])
-
-  if(situation == 'upcoming' && ((sst.diff(now, 'hour') <= 3 && minute%15 == 0) || (sst.diff(now, 'hour')%6 == 0 && minute == 0 && sst.diff(now, 'day') < 7))){
-    post2discord({channel:video[4], title:video[0], videoId:video[3], time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':description_text(situation, sst.format('MM/DD HH:mm'))})
-    console.log(video[0])
-    Utilities.sleep(400)
-  } else if(situation == 'live' && minute%10 == 0){
-    post2discord({channel:video[4], title:video[0], videoId:video[3], time: now.format('YYYY/MM/DD HH:mm:ss'), 'description_text':description_text(situation, sst.format('HH:mm'))})
-    console.log(video[0])
-    Utilities.sleep(400)
-
-
-  }
-  
 }
